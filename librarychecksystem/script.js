@@ -1,59 +1,93 @@
 // script.js
 
-// Data State - LOAD FROM LOCAL STORAGE IF AVAILABLE
-const STORAGE_KEY = 'libraryData';
-let records = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+// 1. นำเข้า Firebase (เวอร์ชันล่าสุด)
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+import { getDatabase, ref, push, onValue, update, remove } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
 
-// Save data to localStorage
-const saveData = () => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
+// ====== ⚠️ 1. นำค่า Configuration จาก Firebase มาวางทับด้านล่างนี้ ⚠️ ======
+const firebaseConfig = {
+    apiKey: "AIzaSyCF1Md0QKHhevZc2zRBsjYPeqNLMsgCqrg",
+    authDomain: "library-checkin-db89e.firebaseapp.com",
+    databaseURL: "https://library-checkin-db89e-default-rtdb.asia-southeast1.firebasedatabase.app/",
+    projectId: "library-checkin-db89e",
+    storageBucket: "library-checkin-db89e.firebasestorage.app",
+    messagingSenderId: "957883084302",
+    appId: "1:957883084302:web:775140b535d0a6b68c965f"
 };
+// =========================================================================
+
+// 2. เชื่อมต่อระบบ Firebase
+let app, db, recordsRef;
+
+try {
+    app = initializeApp(firebaseConfig);
+    db = getDatabase(app);
+    recordsRef = ref(db, 'checkins'); // สร้างโฟลเดอร์ชื่อ checkins ในฐานข้อมูล
+} catch (error) {
+    console.warn("ยังไม่ได้ใส่ค่า Firebase Config หรือใส่ผิด", error);
+}
+
+let records = [];
 
 // Utilities
 const getInitials = (name) => {
     return name.substring(0, 2).toUpperCase();
 };
 
-// จัดรูปแบบ วันที่ + เวลา (เช่น 26 ก.พ. 2569 เวลา 18:45 น.)
 const formatDateTime = (date) => {
     const timeOptions = { hour: '2-digit', minute: '2-digit' };
     const dateOptions = { day: 'numeric', month: 'short', year: 'numeric' };
-
-    const timeStr = date.toLocaleTimeString('th-TH', timeOptions);
-    const dateStr = date.toLocaleDateString('th-TH', dateOptions);
-
-    return `${dateStr} • ${timeStr} น.`;
+    return `${date.toLocaleDateString('th-TH', dateOptions)} • ${date.toLocaleTimeString('th-TH', timeOptions)} น.`;
 };
 
-// จัดรูปแบบสำหรับนาฬิกาให้ดูสวยงาม
 const formatClockTime = (date) => {
     const timeOptions = { hour: '2-digit', minute: '2-digit', second: '2-digit' };
     const dateOptions = { day: 'numeric', month: 'long', year: 'numeric' };
-
-    const timeStr = date.toLocaleTimeString('th-TH', timeOptions);
-    const dateStr = date.toLocaleDateString('th-TH', dateOptions);
-
-    return `${dateStr}  ${timeStr}`;
+    return `${date.toLocaleDateString('th-TH', dateOptions)}  ${date.toLocaleTimeString('th-TH', timeOptions)}`;
 };
 
 // Initialize App
 document.addEventListener('DOMContentLoaded', () => {
     startClock();
-    renderTable();
-    updateStats();
+
+    // ดึงข้อมูลจากฐานข้อมูลแบบ Real-time
+    if (db) {
+        onValue(recordsRef, (snapshot) => {
+            const data = snapshot.val();
+            records = [];
+            if (data) {
+                // แปลงข้อมูลจาก Object เป็น Array
+                Object.keys(data).forEach(key => {
+                    records.push({
+                        id: key, // รหัสของข้อมูลใน Firebase
+                        ...data[key]
+                    });
+                });
+                // เรียงจากเวลาล่าสุดไปเก่าสุด
+                records.sort((a, b) => b.timestamp - a.timestamp);
+            }
+            renderTable();
+            updateStats();
+        });
+    } else {
+        renderTable(); // ถ้าไม่มี db ให้แสดงตารางเปล่าไปก่อน
+    }
 });
 
-// Real-time Clock
 function startClock() {
     const clockEl = document.getElementById('clockDisplay');
     setInterval(() => {
-        const now = new Date();
-        clockEl.textContent = formatClockTime(now);
+        clockEl.textContent = formatClockTime(new Date());
     }, 1000);
 }
 
-// Check In Handler
-function handleCheckIn() {
+// ผูกฟังก์ชันเข้ากับหน้าจอ (เพราะใช้ type="module" ฟังก์ชันจะไม่เป็น Global ทันที)
+window.handleCheckIn = async function () {
+    if (!db || firebaseConfig.apiKey.includes("ใส่_API_KEY_ที่นี่")) {
+        showToast('error', 'ข้อผิดพลาด', 'กรุณาตั้งค่า Firebase Config ในไฟล์ script.js ก่อนใช้งาน');
+        return;
+    }
+
     const idInput = document.getElementById('studentId');
     const nameInput = document.getElementById('fullName');
 
@@ -65,63 +99,62 @@ function handleCheckIn() {
     const now = new Date();
 
     const newRecord = {
-        id: Date.now().toString(),
         studentId,
         fullName,
         checkInTime: formatDateTime(now),
         checkOutTime: null,
         status: 'active',
-        timestamp: now.getTime() // For sorting/managing
+        timestamp: Date.now()
     };
 
-    // Add to beginning of array so newest is top
-    records.unshift(newRecord);
+    try {
+        // ดันข้อมูลขึ้นฐานข้อมูล Firebase
+        await push(recordsRef, newRecord);
+        showToast('success', 'บันทึกสำเร็จ', `${fullName} เข้าสู่ห้องสมุด`);
 
-    // Save to Local Storage
-    saveData();
-
-    renderTable();
-    updateStats();
-    showToast('success', 'บันทึกสำเร็จ', `${fullName} เข้าสู่ห้องสมุด`);
-
-    // Reset Form and focus
-    idInput.value = '';
-    nameInput.value = '';
-    idInput.focus();
-}
-
-// Check Out Handler
-function handleCheckOut(recordId) {
-    const recordIndex = records.findIndex(r => r.id === recordId);
-
-    if (recordIndex !== -1 && records[recordIndex].status === 'active') {
-        const now = new Date();
-        records[recordIndex].checkOutTime = formatDateTime(now);
-        records[recordIndex].status = 'inactive';
-
-        // Save to Local Storage
-        saveData();
-
-        renderTable();
-        updateStats();
-        showToast('info', 'ลงเวลาออก', `${records[recordIndex].fullName} ออกจากห้องสมุด`);
+        idInput.value = '';
+        nameInput.value = '';
+        idInput.focus();
+    } catch (error) {
+        showToast('error', 'บันทึกไม่สำเร็จ', error.message);
     }
 }
 
-// Clear all data
-function clearAllData() {
+window.handleCheckOut = async function (recordId) {
+    if (!db) return;
+
+    const record = records.find(r => r.id === recordId);
+    if (record && record.status === 'active') {
+        const now = new Date();
+        const recordToUpdate = ref(db, `checkins/${recordId}`);
+
+        try {
+            // อัปเดตข้อมูลใน Firebase เฉพาะจุด
+            await update(recordToUpdate, {
+                checkOutTime: formatDateTime(now),
+                status: 'inactive'
+            });
+            showToast('info', 'ลงเวลาออก', `${record.fullName} ออกจากห้องสมุด`);
+        } catch (error) {
+            showToast('error', 'บันทึกไม่สำเร็จ', error.message);
+        }
+    }
+}
+
+window.clearAllData = async function () {
     if (records.length === 0) return;
 
-    if (confirm("คุณต้องการลบประวัติการเข้าใช้งานทั้งหมดใช่หรือไม่?\n\n* ข้อมูลที่ถูกลบจะไม่สามารถกู้คืนได้")) {
-        records = [];
-        saveData();
-        renderTable();
-        updateStats();
-        showToast('error', 'ล้างข้อมูล', 'ลบประวัติทั้งหมดเรียบร้อยแล้ว');
+    if (confirm("คุณต้องการลบประวัติการเข้าใช้งานทั้งหมดใช่หรือไม่?\n\n* ข้อมูลทั้งหมดจะถูกลบออกจากฐานข้อมูลและไม่สามารถกู้คืนได้")) {
+        try {
+            // ลบโฟลเดอร์ checkins ทิ้งทั้งหมด
+            await remove(recordsRef);
+            showToast('error', 'ล้างข้อมูล', 'ลบประวัติทั้งหมดเรียบร้อยแล้ว');
+        } catch (error) {
+            showToast('error', 'ลบข้อมูลไม่สำเร็จ', error.message);
+        }
     }
 }
 
-// Render Table
 function renderTable() {
     const tbody = document.getElementById('tableBody');
     tbody.innerHTML = '';
@@ -132,9 +165,9 @@ function renderTable() {
                 <td colspan="5">
                     <div class="empty-state">
                         <div class="icon-wrapper">
-                            <i class='bx bx-folder-open'></i>
+                            <i class='bx bx-data'></i>
                         </div>
-                        <p>ยังไม่มีข้อมูลการเข้าใช้ห้องสมุดในขณะนี้</p>
+                        <p>ยังไม่มีข้อมูล / กำลังรอการเชื่อมต่อฐานข้อมูล</p>
                     </div>
                 </td>
             </tr>
@@ -145,13 +178,11 @@ function renderTable() {
     records.forEach(record => {
         const tr = document.createElement('tr');
 
-        // Action Cell
         const actionHtml = record.status === 'active'
             ? `<button class="btn btn-action checkout" onclick="handleCheckOut('${record.id}')"><i class='bx bx-log-out'></i> ลงเวลาออก</button>`
             : `<button class="btn btn-action disabled" disabled><i class='bx bx-check'></i> เสร็จสิ้น</button>`;
 
         tr.innerHTML = `
-            <!-- Student Info Cell with Avatar -->
             <td data-label="ผู้ใช้งาน">
                 <div class="student-info">
                     <div class="student-avatar">${getInitials(record.fullName)}</div>
@@ -161,45 +192,33 @@ function renderTable() {
                     </div>
                 </div>
             </td>
-            
-            <!-- Status Cell -->
             <td data-label="สถานะ">
                 ${record.status === 'active'
-                ? `<span class="badge badge-active">กำลังใช้งาน</span>`
-                : `<span class="badge badge-inactive">ออกแล้ว</span>`
+                ? '<span class="badge badge-active">กำลังใช้งาน</span>'
+                : '<span class="badge badge-inactive">ออกแล้ว</span>'
             }
             </td>
-            
-            <!-- Check In Cell -->
             <td data-label="เวลาเข้า">
                 <div class="time-box">
                     <i class='bx bx-time'></i>
                     <span>${record.checkInTime}</span>
                 </div>
             </td>
-            
-            <!-- Check Out Cell -->
             <td data-label="เวลาออก">
                 ${record.checkOutTime
-                ? `
-                    <div class="time-box">
+                ? `<div class="time-box">
                         <i class='bx bx-time' style="color: #64748b;"></i>
                         <span style="color: #64748b;">${record.checkOutTime}</span>
-                    </div>
-                    `
+                       </div>`
                 : '<span style="color: #cbd5e1; font-weight: 500;">-</span>'
             }
             </td>
-            
-            <!-- Action Cell -->
             <td data-label="จัดการ">${actionHtml}</td>
         `;
-
         tbody.appendChild(tr);
     });
 }
 
-// Update Statistics
 function updateStats() {
     const total = records.length;
     const active = records.filter(r => r.status === 'active').length;
@@ -220,10 +239,8 @@ function updateStats() {
     activeEl.textContent = active;
 }
 
-// Toast Notification System
 function showToast(type, title, message) {
     const container = document.getElementById('toastContainer');
-
     const toast = document.createElement('div');
     toast.className = `toast ${type}`;
 
@@ -242,12 +259,10 @@ function showToast(type, title, message) {
 
     container.appendChild(toast);
 
-    // Trigger animation
     setTimeout(() => {
         toast.classList.add('show');
     }, 10);
 
-    // Remove after 3.5 seconds
     setTimeout(() => {
         toast.classList.remove('show');
         setTimeout(() => {
