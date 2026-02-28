@@ -2,7 +2,7 @@
 window.formatClockTime = (date) => {
     const timeOptions = { hour: '2-digit', minute: '2-digit', second: '2-digit' };
     const dateOptions = { day: 'numeric', month: 'long', year: 'numeric' };
-    return `${date.toLocaleDateString('th-TH', dateOptions)}  ${date.toLocaleTimeString('th-TH', timeOptions)}`;
+    return `${date.toLocaleDateString('th-TH', dateOptions)} <span style="display:inline-block; width: 62px; text-align:center;">${date.toLocaleTimeString('th-TH', timeOptions)}</span>`;
 };
 // 1. นำเข้า Firebase
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
@@ -89,10 +89,10 @@ document.addEventListener('DOMContentLoaded', () => {
 window.startClock = function () {
     const clockEl = document.getElementById('clockDisplay');
     // ให้มันรันครั้งแรกก่อน 1 รอบ จะได้ไม่รอดิเลย์ 1 วินาทีแรก
-    if (clockEl) clockEl.textContent = formatClockTime(new Date());
+    if (clockEl) clockEl.innerHTML = formatClockTime(new Date());
 
     setInterval(() => {
-        if (clockEl) clockEl.textContent = formatClockTime(new Date());
+        if (clockEl) clockEl.innerHTML = formatClockTime(new Date());
     }, 1000);
 }
 

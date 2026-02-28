@@ -174,13 +174,12 @@ header {
     transform: scale(0.96);
 }
 
-.logo i {
-    font-size: 1.8rem;
-    color: var(--ios-blue);
-    background: linear-gradient(135deg, #32ade6, #007AFF);
-    background-clip: text;
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
+.logo-img {
+    height: 32px;
+    width: 32px;
+    object-fit: contain;
+    border-radius: 6px;
+    /* In case the image needs slight rounding */
 }
 
 .header-right {
@@ -200,6 +199,11 @@ header {
     padding: 0.5rem 1rem;
     border-radius: var(--radius-full);
     transition: var(--transition-fast);
+    font-variant-numeric: tabular-nums;
+    /* Prevents jumping when numbers change */
+    min-width: 140px;
+    /* Fixed width to prevent flexbox shifting */
+    justify-content: center;
 }
 
 .live-clock:hover {

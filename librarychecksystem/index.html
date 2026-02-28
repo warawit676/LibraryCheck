@@ -4,7 +4,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Library Check-in System</title>
+    <title>LibraryCheck</title>
+
+    <!-- แท็บไอคอน (Favicon) ใช้ไฟล์รูปภาพ logo.png -->
+    <link rel="icon" type="image/png" href="logo.png?v=2">
+
     <!-- Google Fonts: Kanit -->
     <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <!-- Boxicons for Icons -->
@@ -17,8 +21,8 @@
 
     <!-- Header -->
     <header>
-        <div class="logo">
-            <i class='bx bx-book-reader'></i>
+        <div class="logo" onclick="switchView('checkInView')" style="cursor: pointer;" title="กลับสู่หน้าหลัก">
+            <img src="logo.png?v=2" alt="LibraryCheck Logo" class="logo-img">
             <span>LibraryCheck</span>
         </div>
 
