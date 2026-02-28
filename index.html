@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LibraryCheck</title>
+
+    <!-- แท็บไอคอน (Favicon) ใช้ไฟล์รูปภาพ logo.png -->
+    <link rel="icon" type="image/png" href="logo.png?v=2">
+
+    <!-- Google Fonts: Kanit -->
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Boxicons for Icons -->
+    <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
+    <!-- Custom Style -->
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+    <!-- Header -->
+    <header>
+        <div class="logo" onclick="switchView('checkInView')" style="cursor: pointer;" title="กลับสู่หน้าหลัก">
+            <img src="logo.png?v=2" alt="LibraryCheck Logo" class="logo-img">
+            <span>LibraryCheck</span>
+        </div>
+
+        <!-- Navigation for logged in users -->
+        <nav id="mainNav" class="hidden">
+            <div class="nav-slider"></div>
+            <button class="nav-btn active-nav" onclick="switchView('checkInView')" data-index="0"><i
+                    class='bx bx-home'></i> หน้าหลัก</button>
+            <button id="navDashboardBtn" class="nav-btn hidden" onclick="switchView('dashboardView')" data-index="1"><i
+                    class='bx bx-grid-alt'></i> แผงควบคุม</button>
+            <button id="navProfileBtn" class="nav-btn hidden" onclick="switchView('profileView')" data-index="2"><i
+                    class='bx bx-user'></i> โปรไฟล์ของฉัน</button>
+        </nav>
+
+        <div class="header-right">
+            <div class="live-clock">
+                <i class='bx bx-time-five'></i>
+                <span id="clockDisplay">00:00:00</span>
+            </div>
+
+            <div id="authButtons">
+                <button id="loginRouteBtn" class="btn btn-action" onclick="switchView('authView')"><i
+                        class='bx bx-log-in'></i> เข้าสู่ระบบ</button>
+            </div>
+
+            <div id="userMenu" class="hidden" style="display: flex; gap: 1rem; align-items: center;">
+                <span id="userNameDisplay" style="font-size: 0.9rem; font-weight: 500;"></span>
+                <button class="btn btn-action checkout" onclick="handleLogout()"><i class='bx bx-log-out'></i>
+                    ออกจากระบบ</button>
+            </div>
+
+            <button id="clearDataBtn" class="clear-data-btn hidden" onclick="clearAllData()">
+                <i class='bx bx-trash'></i> ล้างข้อมูล
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main>
+        <!-- ======================= -->
+        <!-- VIEW 1: AUTHENTICATION  -->
+        <!-- ======================= -->
+        <div id="authView" class="view-container hidden"
+            style="width: 100%; max-width: 500px; margin: 0 auto; grid-column: 1 / -1;">
+            <div class="card">
+                <div class="auth-tabs">
+                    <div class="auth-slider"></div>
+                    <button id="tabStudent" class="auth-tab active" onclick="switchAuthTab('student')"
+                        data-index="0">นักเรียน</button>
+                    <button id="tabStaff" class="auth-tab" onclick="switchAuthTab('staff')"
+                        data-index="1">บุคลากร</button>
+                </div>
+
+                <div class="card-body">
+                    <!-- Student Login Form -->
+                    <form id="studentAuthForm" onsubmit="event.preventDefault(); handleStudentAuth();">
+                        <div class="form-group">
+                            <label for="authStudentId">รหัสนักเรียน <span
+                                    style="color:var(--text-muted); font-weight:normal;">(เข้าสู่ระบบ /
+                                    สร้างโปรไฟล์)</span></label>
+                            <div class="input-group">
+                                <i class='bx bx-id-card'></i>
+                                <input type="text" id="authStudentId" placeholder="เช่น 66202040089" required>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-primary" style="margin-top: 1rem;">
+                            <i class='bx bx-log-in-circle'></i> เข้าสู่ระบบของนักเรียน
+                        </button>
+                    </form>
+
+                    <!-- Staff Login Form -->
+                    <form id="staffAuthForm" class="hidden" onsubmit="event.preventDefault(); handleStaffLogin();">
+                        <div class="form-group">
+                            <label for="staffEmail">อีเมลแอดมิน</label>
+                            <div class="input-group">
+                                <i class='bx bx-envelope'></i>
+                                <input type="email" id="staffEmail" placeholder="admin@library.com" required>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="staffPassword">รหัสผ่าน</label>
+                            <div class="input-group">
+                                <i class='bx bx-lock-alt'></i>
+                                <input type="password" id="staffPassword" placeholder="******" required>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-primary" style="margin-top: 1rem;">
+                            <i class='bx bx-log-in-circle'></i> เข้าสู่ระบบบุคลากร
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- ======================= -->
+        <!-- VIEW 2: CHECK-IN DESK   -->
+        <!-- ======================= -->
+        <div id="checkInView" class="view-container view-grid">
+            <!-- Left Column: Form & Stats -->
+            <div class="left-col">
+                <!-- Stats Dashboard -->
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon blue">
+                            <i class='bx bx-group'></i>
+                        </div>
+                        <div class="stat-content">
+                            <h3>ผู้ใช้งานวันนี้</h3>
+                            <p id="totalUsersStat">0</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon green">
+                            <i class='bx bx-user-check'></i>
+                        </div>
+                        <div class="stat-content">
+                            <h3>กำลังใช้งาน</h3>
+                            <p id="activeUsersStat">0</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Form Card -->
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-title">
+                            <i class='bx bx-log-in-circle'></i> ลงเวลาเข้าห้องสมุด
+                        </div>
+                        <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 5px;">* กรอกรหัส หรือ ชื่อ
+                            อย่างใดอย่างหนึ่งถ้าระบบมีข้อมูลแล้ว</p>
+                    </div>
+                    <div class="card-body">
+                        <form id="checkInForm" onsubmit="event.preventDefault(); handleSmartCheckIn();">
+                            <div class="form-group">
+                                <label for="studentId">รหัสนักเรียน</label>
+                                <div class="input-group">
+                                    <i class='bx bx-id-card'></i>
+                                    <input type="text" id="studentId" placeholder="เช่น 66202040089" autocomplete="off">
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label for="fullName">ชื่อ-นามสกุล</label>
+                                <div class="input-group">
+                                    <i class='bx bx-user'></i>
+                                    <input type="text" id="fullName" placeholder="เช่น สมชาย ใจดี" autocomplete="off">
+                                </div>
+                            </div>
+                            <div class="form-group" style="margin-top: 1.5rem;">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class='bx bx-check-circle'></i> บันทึกการเข้าใช้งาน (Check-in)
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column: Data Table -->
+            <div class="right-col">
+                <div class="card" style="height: 100%;">
+                    <div class="card-header"
+                        style="display: flex; justify-content: space-between; align-items: center;">
+                        <div class="card-title">
+                            <i class='bx bx-list-ul'></i> ประวัติการเข้าใช้งาน (บันทึกอัตโนมัติ)
+                        </div>
+                    </div>
+                    <!-- Table -->
+                    <div class="table-wrapper">
+                        <table id="recordsTable">
+                            <thead>
+                                <tr>
+                                    <th>ผู้ใช้งาน</th>
+                                    <th>สถานะ</th>
+                                    <th>เวลาเข้า</th>
+                                    <th>เวลาออก</th>
+                                    <th>จัดการ</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tableBody">
+                                <!-- Data will be injected here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ======================= -->
+        <!-- VIEW 3: STAFF DASHBOARD -->
+        <!-- ======================= -->
+        <div id="dashboardView" class="view-container hidden" style="grid-column: 1 / -1;">
+            <div class="card" style="height: 100%;">
+                <div class="card-header">
+                    <div class="card-title">
+                        <i class='bx bx-grid-alt'></i> ผู้ใช้งานที่มีในระบบทั้งหมด
+                    </div>
+                    <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 5px;">
+                        คลิกที่ชื่อเพื่อดูประวัติการเข้าใช้งานโดยละเอียด</p>
+                </div>
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>นักเรียน</th>
+                                <th>รหัสนักเรียน</th>
+                                <th>จำนวนครั้งที่เข้าใช้</th>
+                                <th>ใช้งานล่าสุด</th>
+                                <th>จัดการ</th>
+                            </tr>
+                        </thead>
+                        <tbody id="staffUsersTableBody">
+                            <!-- Staff users list injected here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- ======================= -->
+        <!-- VIEW 4: STUDENT PROFILE -->
+        <!-- ======================= -->
+        <div id="profileView" class="view-container hidden"
+            style="grid-column: 1 / -1; max-width: 800px; margin: 0 auto; width: 100%;">
+            <div class="card">
+                <div class="card-header"
+                    style="background: linear-gradient(135deg, var(--primary), #0ea5e9); color: white; padding: 2rem;">
+                    <div class="student-info" style="gap: 1.5rem;">
+                        <div id="profileAvatar" class="student-avatar"
+                            style="width: 4rem; height: 4rem; font-size: 1.5rem; background: white; color: var(--primary);">
+                            --</div>
+                        <div class="student-details">
+                            <h2 id="profileName" style="font-size: 1.5rem; font-weight: 600;">ชื่อ-นามสกุล</h2>
+                            <p id="profileId" style="opacity: 0.9;">รหัส: ------</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <h3 style="margin-bottom: 1rem; color: var(--text-main);"><i class='bx bx-history'></i>
+                        ประวัติการเข้าใช้งานของฉัน <span id="profileVisitCount" class="badge badge-active"
+                            style="float: right;">0 ครั้ง</span></h3>
+                    <div class="table-wrapper" style="height: 400px;">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>วันที่/เวลาเข้า</th>
+                                    <th>เวลาออก</th>
+                                    <th>สถานะ</th>
+                                </tr>
+                            </thead>
+                            <tbody id="profileHistoryTableBody">
+                                <!-- Profile history injected here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Toasts Container -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <!-- Custom Script -->
+    <script type="module" src="script.js"></script>
+</body>
+
+</html>
