@@ -468,10 +468,15 @@ function renderTable() {
 
 function updateStats() {
     const active = records.filter(r => r.status === 'active').length;
-    // หาผู้ใช้งานแบบไม่ซ้ำกันสำหรับ "ผู้ใช้งานวันนี้" ในความเป็นจริงอาจต้องเช็ควันที่
-    // สร้าง Array ของ ID ที่เข้าวันนี้
+    // หาผู้ใช้งานแบบไม่ซ้ำกันสำหรับ "ผู้ใช้งานวันนี้" 
     const uniqueUsersSet = new Set();
-    records.forEach(r => uniqueUsersSet.add(r.studentId));
+    const todayStr = new Date().toDateString();
+
+    records.forEach(r => {
+        if (new Date(r.timestamp).toDateString() === todayStr) {
+            uniqueUsersSet.add(r.studentId);
+        }
+    });
     const total = uniqueUsersSet.size;
 
     const totalEl = document.getElementById('totalUsersStat');
